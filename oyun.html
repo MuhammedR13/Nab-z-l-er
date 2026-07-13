@@ -1,0 +1,415 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Siber Tip PPG v13.0 - Gercek Biyometrik Motor</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0b0e14; color: #c9d1d9;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 10px; box-sizing: border-box;
+        }
+        .container {
+            background-color: #161a22; padding: 25px; border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8); width: 100%; max-width: 400px;
+            text-align: center; border: 1px solid #21262d; position: relative;
+        }
+        .badge {
+            font-size: 11px; font-family: monospace; background-color: rgba(56, 139, 253, 0.15);
+            color: #58a6ff; padding: 6px 12px; border-radius: 12px;
+            border: 1px solid rgba(56, 139, 253, 0.3); margin-bottom: 15px; display: inline-block;
+        }
+        h2 { margin: 0 0 5px 0; font-size: 22px; color: #f0f6fc; }
+        .info-text { color: #8b949e; font-size: 13px; margin-bottom: 20px; }
+        
+        #videoContainer {
+            width: 65px; height: 65px; background-color: #010409;
+            border-radius: 50%; overflow: hidden; border: 2px solid #30363d; margin: 0 auto 20px auto;
+            position: relative;
+        }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scale(1.3); }
+        
+        .status-box {
+            background-color: #0d1117; border: 1px solid #21262d;
+            padding: 12px; border-radius: 12px; font-size: 13px;
+            color: #ffeb3b; margin-bottom: 15px; font-weight: 500; min-height: 20px;
+        }
+
+        /* Akll Sayaç Tasarm */
+        .timer-container {
+            display: flex; justify-content: space-between; align-items: center;
+            background-color: #0d1117; border: 1px solid #21262d;
+            padding: 10px 15px; border-radius: 12px; margin-bottom: 15px;
+            font-size: 14px; font-family: monospace;
+        }
+        .timer-label { color: #8b949e; }
+        .timer-value { color: #f85149; font-weight: bold; font-size: 18px; text-shadow: 0 0 10px rgba(248, 81, 73, 0.2); }
+        .timer-status { font-size: 11px; padding: 2px 8px; border-radius: 6px; font-weight: bold; }
+        .status-waiting { background-color: rgba(240, 185, 11, 0.15); color: #f0b90b; }
+        .status-active { background-color: rgba(56, 139, 253, 0.15); color: #58a6ff; }
+        .status-paused { background-color: rgba(248, 81, 73, 0.15); color: #f85149; }
+        .status-ready { background-color: rgba(0, 230, 118, 0.15); color: #00e676; }
+        
+        canvas {
+            width: 100%; height: 120px; background-color: #010409;
+            border-radius: 12px; border: 1px solid #21262d; margin-bottom: 15px;
+        }
+        
+        /* Kalp Simgesi ve Nabz Alan */
+        .bpm-container {
+            display: flex; justify-content: center; align-items: center; gap: 15px; margin: 15px 0;
+        }
+        .heart-icon {
+            font-size: 40px; color: #f85149; transition: transform 0.1s ease;
+            transform: scale(1);
+        }
+        .heart-beat {
+            transform: scale(1.3) !important;
+        }
+        .bpm-display {
+            font-size: 72px; font-weight: 800; color: #00e676;
+            font-family: monospace; line-height: 1;
+            text-shadow: 0 0 25px rgba(0, 230, 118, 0.4);
+        }
+        .bpm-display span { font-size: 22px; color: #8b949e; font-weight: 400; }
+
+        .btn {
+            width: 100%; color: white; padding: 15px; border: none; border-radius: 12px;
+            cursor: pointer; font-size: 16px; font-weight: 600; margin-bottom: 10px; transition: 0.2s;
+        }
+        #startBtn { background: linear-gradient(135deg, #238636, #2ea44f); box-shadow: 0 4px 12px rgba(46,164,79,0.3); }
+        #stopBtn { background: linear-gradient(135deg, #da3637, #b62324); display: none; }
+        #downloadBtn { background: linear-gradient(135deg, #1f6feb, #0969da); display: none; box-shadow: 0 4px 12px rgba(31,111,235,0.3); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="badge">100% REAL OPTICAL PPG v13.0</div>
+    <h2>PPG Nab&#305;z &amp; Raporlama</h2>
+    <div class="info-text">Filtrelenmi&#351; Canl&#305; Optik De&#287;i&#351;im Analiz Motoru</div>
+
+    <div id="videoContainer">
+        <video id="webcam" autoplay playsinline muted></video>
+    </div>
+    
+    <div id="status" class="status-box">Sistem analiz i&#231;in haz&#305;r.</div>
+
+    <!-- Saniye Sayac (Geri Saym) -->
+    <div class="timer-container">
+        <span class="timer-label">Kalan S&#252;re:</span>
+        <span id="timerVal" class="timer-value">20s</span>
+        <span id="timerStatus" class="timer-status status-waiting">PARMAK BEKLEN&#304;YOR</span>
+    </div>
+    
+    <canvas id="pulseGraph"></canvas>
+    
+    <div class="bpm-container">
+        <div id="heartIcon" class="heart-icon">&#9829;</div>
+        <div class="bpm-display"><span id="bpmValue">--</span> <span>BPM</span></div>
+    </div>
+    
+    <button class="btn" id="startBtn" onclick="initCameraPPG()">&#214;l&#231;&#252;m&#252; Ba&#351;lat</button>
+    <button class="btn" id="stopBtn" onclick="stopCameraPPG()">&#214;l&#231;&#252;m&#252; Durdur</button>
+    <button class="btn" id="downloadBtn" onclick="downloadReport()">Raporu Telefonuna &#304;ndir (.TXT)</button>
+</div>
+
+<!-- Piksel analizi için görünmez tuval -->
+<canvas id="mathCanvas" style="display:none;" width="16" height="16"></canvas>
+
+<script>
+let video = document.getElementById('webcam');
+let mathCanvas = document.getElementById('mathCanvas');
+let mCtx = mathCanvas.getContext('2d');
+let graphCanvas = document.getElementById('pulseGraph');
+let gCtx = graphCanvas.getContext('2d');
+let statusBox = document.getElementById('status');
+let bpmValue = document.getElementById('bpmValue');
+let heartIcon = document.getElementById('heartIcon');
+
+let timerVal = document.getElementById('timerVal');
+let timerStatus = document.getElementById('timerStatus');
+
+let startBtn = document.getElementById('startBtn');
+let stopBtn = document.getElementById('stopBtn');
+let downloadBtn = document.getElementById('downloadBtn');
+
+let signalHistory = [];
+let rawSignals = [];
+let peakTimes = [];
+let localStream = null;
+let isRunning = false;
+let recordedBpmLogs = []; 
+
+// Geri Saym Parametreleri
+let countdownSeconds = 20;
+let lastTickTime = 0;
+let isFingerPresent = false;
+
+// Ses sentezleyici (Bip sesi için)
+let audioCtx = null;
+
+function playHeartbeatSound() {
+    try {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(80, audioCtx.currentTime); // Alçak kalp sesi frekans (80Hz)
+        gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15); // Hzl sönümleme
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.15);
+    } catch (e) {
+        // Tarayc izin kstlamas olursa hata vermeden devam etsin
+    }
+}
+
+async function initCameraPPG() {
+    startBtn.style.display = 'none';
+    downloadBtn.style.display = 'none';
+    stopBtn.style.display = 'block';
+    
+    statusBox.innerText = "Kamera senkronize ediliyor...";
+    recordedBpmLogs = []; 
+    signalHistory = [];
+    rawSignals = [];
+    peakTimes = [];
+    isRunning = true;
+    
+    // Sayac 20 saniyeye ayarla ve beklemeye al
+    countdownSeconds = 20;
+    timerVal.innerText = "20s";
+    timerStatus.innerText = "PARMAK BEKLEN\u0130YOR";
+    timerStatus.className = "timer-status status-waiting";
+    isFingerPresent = false;
+    
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "environment", width: 128, height: 128 },
+            audio: false
+        });
+        
+        video.srcObject = localStream;
+        
+        const track = localStream.getVideoTracks()[0];
+        if(track.getCapabilities && track.getCapabilities().torch) {
+            await track.applyConstraints({ advanced: [{ torch: true }] });
+        }
+        
+        statusBox.innerText = "Parma\u011f\u0131n\u0131z\u0131 ARKA KAMERAYA tam oturtun.";
+        statusBox.style.color = "#ffeb3b";
+        
+        setTimeout(processFrame, 1000);
+        
+    } catch (err) {
+        statusBox.innerText = "Kamera ba\u011flant\u0131 hatas\u0131!";
+        statusBox.style.color = "#f85149";
+        resetUI();
+    }
+}
+
+function processFrame() {
+    if (!isRunning || video.paused || video.ended) return;
+    
+    mCtx.drawImage(video, 0, 0, mathCanvas.width, mathCanvas.height);
+    let pixels = mCtx.getImageData(0, 0, mathCanvas.width, mathCanvas.height).data;
+    
+    let rSum = 0, gSum = 0;
+    for(let i = 0; i < pixels.length; i += 4) {
+        rSum += pixels[i];
+        gSum += pixels[i+1];
+    }
+    let rAvg = rSum / (pixels.length / 4);
+    let gAvg = gSum / (pixels.length / 4);
+    
+    // Parmak tespiti: Krmz younluunun yeilden net bir ekilde fazla olmas art
+    if (rAvg > 115 && gAvg < 155) {
+        if (!isFingerPresent) {
+            isFingerPresent = true;
+            lastTickTime = performance.now();
+            timerStatus.innerText = "VER\u0130 TOPLANIYOR";
+            timerStatus.className = "timer-status status-active";
+        }
+
+        // Geri saym
+        if (countdownSeconds > 0) {
+            let now = performance.now();
+            if (now - lastTickTime >= 1000) {
+                countdownSeconds--;
+                timerVal.innerText = countdownSeconds + "s";
+                lastTickTime = now;
+                
+                if (countdownSeconds <= 0) {
+                    timerStatus.innerText = "TAMAMLANDI";
+                    timerStatus.className = "timer-status status-ready";
+                    stopCameraPPG();
+                    return;
+                }
+            }
+        }
+
+        // Gürültüyü engellemek için son 1 saniyelik ham verilerin hareketli ortalamasn buluyoruz
+        rawSignals.push(rAvg);
+        if(rawSignals.length > 30) rawSignals.shift();
+        
+        let localMean = rawSignals.reduce((a, b) => a + b, 0) / rawSignals.length;
+        
+        // Sinyali sfr noktasna göre normalize et (Otomatik Ik Korumas)
+        let normalizedValue = rAvg - localMean;
+        
+        signalHistory.push(normalizedValue);
+        if(signalHistory.length > 120) signalHistory.shift();
+        
+        drawGraph();
+        detectRealPPGPeaks(normalizedValue);
+    } else {
+        // Parmak çekildiinde sayac duraklat
+        if (isFingerPresent) {
+            isFingerPresent = false;
+            timerStatus.innerText = "DURAKLATILDI";
+            timerStatus.className = "timer-status status-paused";
+        }
+        statusBox.innerText = "Parma\u011f\u0131n\u0131z\u0131 lensin \u00fczerine tam kapat\u0131n.";
+        statusBox.style.color = "#ffeb3b";
+        if(signalHistory.length > 0) signalHistory.shift();
+    }
+    
+    requestAnimationFrame(processFrame);
+}
+
+function drawGraph() {
+    gCtx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+    gCtx.strokeStyle = "#00e676";
+    gCtx.lineWidth = 3;
+    gCtx.beginPath();
+    
+    let step = graphCanvas.width / 120;
+    let min = Math.min(...signalHistory);
+    let max = Math.max(...signalHistory);
+    let range = (max - min) || 1;
+    
+    for(let i = 0; i < signalHistory.length; i++) {
+        let x = i * step;
+        let y = graphCanvas.height - ((signalHistory[i] - min) / range * (graphCanvas.height - 30)) - 15;
+        if(i === 0) gCtx.moveTo(x, y);
+        else gCtx.lineTo(x, y);
+    }
+    gCtx.stroke();
+}
+
+// %100 GERÇEK ZRVE NOKTASI ANALZ
+function detectRealPPGPeaks(currentVal) {
+    if(signalHistory.length < 15) return;
+    
+    let idx = signalHistory.length - 2;
+    
+    // Diferansiyel tepe noktas (Zirveden aa dönü an)
+    if(signalHistory[idx] > signalHistory[idx-1] && signalHistory[idx] > signalHistory[idx+1] && signalHistory[idx] > 0.1) {
+        let now = performance.now();
+        
+        // Mantksal insan kalp ritmi filtresi (Dakikada 45 ila 140 vuru aras - 430ms ila 1330ms)
+        if(peakTimes.length === 0 || (now - peakTimes[peakTimes.length - 1] > 430)) {
+            peakTimes.push(now);
+            
+            // GERÇEK ZAMANLI NABIZ ATTI: Kalp ikonu efektini ve sesi tetikle
+            heartIcon.classList.add('heart-beat');
+            playHeartbeatSound();
+            setTimeout(() => heartIcon.classList.remove('heart-beat'), 120);
+
+            if(peakTimes.length > 5) peakTimes.shift();
+            
+            if(peakTimes.length >= 2) {
+                let totalDiff = 0;
+                for(let i = 1; i < peakTimes.length; i++) {
+                    totalDiff += (peakTimes[i] - peakTimes[i-1]);
+                }
+                let avgDiff = totalDiff / (peakTimes.length - 1);
+                let realBpm = Math.round(60000 / avgDiff);
+                
+                // Gerçek biyolojik snrlar
+                if(realBpm >= 45 && realBpm <= 140) {
+                    document.getElementById('bpmValue').innerText = realBpm;
+                    statusBox.innerText = "S&#304;NYAL ALINIYOR: Sabit Kal&#305;n.";
+                    statusBox.style.color = "#00e676";
+                    
+                    let timestampStr = new Date().toLocaleTimeString('tr-TR');
+                    recordedBpmLogs.push({ time: timestampStr, bpm: realBpm });
+                }
+            }
+        }
+    }
+}
+
+function stopCameraPPG() {
+    isRunning = false;
+    
+    if(localStream) {
+        localStream.getTracks().forEach(track => track.stop());
+    }
+    stopBtn.style.display = 'none';
+    startBtn.style.display = 'block';
+    
+    statusBox.innerText = "\u00d6l\u00e7\u00fcm tamamland\u0131. Rapor haz\u0131r.";
+    statusBox.style.color = "#58a6ff";
+    
+    if(recordedBpmLogs.length > 0) {
+        downloadBtn.style.display = 'block';
+    }
+}
+
+function downloadReport() {
+    if(recordedBpmLogs.length === 0) return;
+    
+    let rawValues = recordedBpmLogs.map(log => log.bpm);
+    let avgBpm = Math.round(rawValues.reduce((a, b) => a + b, 0) / rawValues.length);
+    let minBpm = Math.min(...rawValues);
+    let maxBpm = Math.max(...rawValues);
+    
+    let healthStatus = "Normal Deger";
+    if(avgBpm > 100) healthStatus = "Yuksek (Tasikardi Riski)";
+    if(avgBpm < 60) healthStatus = "Dusuk (Bradikardi Riski)";
+
+    let fileContent = "===================================================\n";
+    fileContent += "         SIBER TIP RESMI OPTIK PPG RAPORU          \n";
+    fileContent += "===================================================\n";
+    fileContent += `Tarih / Saat     : ${new Date().toLocaleString()}\n`;
+    fileContent += `Olculen Sure     : ${20 - countdownSeconds} saniye\n`;
+    fileContent += `Ortalama Nabiz   : ${avgBpm} BPM\n`;
+    fileContent += `En Dusuk Nabiz   : ${minBpm} BPM\n`;
+    fileContent += `En Yuksek Nabiz  : ${maxBpm} BPM\n`;
+    fileContent += `Genel Durum      : ${healthStatus}\n`;
+    fileContent += `Toplam Kayit     : ${recordedBpmLogs.length} kalp vurusu\n`;
+    fileContent += "===================================================\n\n";
+    fileContent += "ANLIK VERI AKIS LOGLARI:\n";
+    fileContent += "---------------------------------------------------\n";
+    
+    recordedBpmLogs.forEach(log => {
+        fileContent += `[${log.time}] Olculen Deger: ${log.bpm} BPM\n`;
+    });
+    
+    fileContent += "\n===================================================\n";
+    fileContent += "NOT: Bu rapor web-PPG motoru tarafindan uretilmistir.\n";
+
+    let blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), fileContent], { type: "text/plain;charset=utf-8" });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `temiz_biyometrik_rapor.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+</script>
+
+</body>
+</html>
