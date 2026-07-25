@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline QR Messenger Ultimate</title>
+  <style>
+    :root {
+      --bg: #0b141a;
+      --panel: #111b21;
+      --accent: #00a884;
+      --text: #e9edef;
+      --text-sub: #8696a0;
+      --sent: #005c4b;
+      --recv: #202c33;
+      --border: #222d34;
+      --badge: #25d366;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+    body { background-color: var(--bg); color: var(--text); height: 100vh; max-width: 480px; margin: 0 auto; overflow: hidden; }
+
+    /* Screen Management */
+    .screen { display: none; flex-direction: column; height: 100vh; width: 100%; }
+    .screen.active { display: flex; }
+
+    /* Header */
+    header { background: var(--panel); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+    .header-title { font-size: 1.2rem; font-weight: bold; color: var(--text); }
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; text-transform: uppercase; font-size: 1.1rem; }
+    .icon-btn { background: none; border: none; color: var(--text-sub); font-size: 1.2rem; cursor: pointer; padding: 6px; border-radius: 50%; }
+
+    /* Search Bar */
+    .search-box { padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+    .search-box input { width: 100%; padding: 8px 14px; border-radius: 18px; border: none; background: #2a3942; color: white; outline: none; font-size: 0.9rem; }
+
+    /* Contacts List */
+    .contacts-list { flex: 1; overflow-y: auto; }
+    .contact-item { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .contact-item:active { background: #182229; }
+    .contact-info { flex: 1; overflow: hidden; }
+    .contact-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .contact-name { font-weight: bold; font-size: 1rem; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .contact-time { font-size: 0.75rem; color: var(--text-sub); }
+    .contact-bottom { display: flex; justify-content: space-between; align-items: center; }
+    .contact-last-msg { font-size: 0.85rem; color: var(--text-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+    .badge { background: var(--badge); color: #111b21; font-size: 0.75rem; font-weight: bold; padding: 2px 6px; border-radius: 10px; min-width: 18px; text-align: center; }
+
+    /* FAB */
+    .fab { position: fixed; bottom: 20px; right: 20px; width: 56px; height: 56px; border-radius: 16px; background: var(--accent); color: white; border: none; font-size: 1.5rem; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+
+    /* Chat Screen */
+    .chat-header-info { display: flex; align-items: center; gap: 10px; flex: 1; margin-left: 8px; }
+    #chat-box { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; background-image: radial-gradient(#1f2c34 1px, transparent 1px); background-size: 16px 16px; }
+    .msg { max-width: 80%; padding: 8px 12px; border-radius: 10px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; position: relative; cursor: pointer; }
+    .msg.sent { align-self: flex-end; background-color: var(--sent); border-top-right-radius: 2px; }
+    .msg.recv { align-self: flex-start; background-color: var(--recv); border-top-left-radius: 2px; }
+    .msg .meta { font-size: 0.65rem; color: var(--text-sub); margin-top: 4px; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+    .msg .check { color: #53bdeb; font-size: 0.75rem; font-weight: bold; }
+
+    /* Controls */
+    .quick-emojis { display: flex; gap: 6px; padding: 6px 12px; background: var(--panel); border-top: 1px solid var(--border); overflow-x: auto; }
+    .emoji-btn { background: #1f2c34; border: 1px solid var(--border); color: white; padding: 4px 8px; border-radius: 12px; font-size: 0.9rem; cursor: pointer; flex-shrink: 0; }
+    .controls { background: var(--panel); padding: 10px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); }
+    .input-row { display: flex; gap: 6px; align-items: center; }
+    input[type="text"].msg-input { flex: 1; padding: 10px 14px; border-radius: 20px; border: 1px solid var(--border); background: #2a3942; color: white; outline: none; font-size: 0.9rem; user-select: text; }
+    .btn-send { width: 40px; height: 40px; border-radius: 50%; border: none; background: var(--accent); color: white; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .btn-qr { height: 40px; padding: 0 12px; border-radius: 20px; border: none; background: #3b82f6; color: white; font-weight: bold; font-size: 0.85rem; display: flex; align-items: center; gap: 4px; cursor: pointer; flex-shrink: 0; }
+    .btn-send:active, .btn-qr:active { transform: scale(0.95); }
+    .btn { padding: 10px 16px; border-radius: 20px; border: none; background: var(--accent); color: white; font-weight: bold; cursor: pointer; }
+    .btn-scan { background: #202c33; border: 1px solid var(--border); width: 100%; border-radius: 12px; margin-top: 2px; }
+
+    /* Modals & Action Sheet */
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
+    .modal-card { background: var(--panel); padding: 20px; border-radius: 16px; text-align: center; max-width: 320px; width: 100%; border: 1px solid var(--border); }
+    .qr-container { background: white; padding: 14px; border-radius: 12px; display: inline-block; margin: 12px 0; }
+    #qr-canvas { display: block; }
+    video { width: 100%; max-width: 280px; border-radius: 12px; background: black; }
+    
+    .action-sheet { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel); border-top-left-radius: 20px; border-top-right-radius: 20px; padding: 16px; z-index: 110; border-top: 1px solid var(--border); }
+    .sheet-option { padding: 14px; text-align: left; font-size: 1rem; color: var(--text); border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; }
+    .sheet-option.danger { color: #ef4444; }
+
+    .color-picker { display: flex; justify-content: center; gap: 8px; margin: 12px 0; }
+    .color-opt { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <!-- EKRAN 1: SOHBET LSTES -->
+  <div id="contacts-screen" class="screen active">
+    <header>
+      <div class="header-title">Sohbetler</div>
+      <div class="header-actions">
+        <button class="icon-btn" onclick="openScanner()" title="QR Oku"></button>
+        <button class="icon-btn" onclick="openProfileModal()" title="Profilim"></button>
+      </div>
+    </header>
+
+    <div class="search-box">
+      <input type="text" id="contactSearch" oninput="renderContacts()" placeholder="Kiilerde ara...">
+    </div>
+
+    <div id="contacts-list" class="contacts-list"></div>
+
+    <button class="fab" onclick="openNewContactModal()" title="Yeni Sohbet">+</button>
+  </div>
+
+  <!-- EKRAN 2: ÖZEL SOHBET DETAYI -->
+  <div id="chat-screen" class="screen">
+    <header>
+      <button class="icon-btn" onclick="showContactsScreen()"></button>
+      <div class="chat-header-info">
+        <div id="active-avatar" class="avatar" style="width:34px; height:34px; font-size:0.9rem;">?</div>
+        <div>
+          <div id="active-name" style="font-weight: bold; font-size: 0.95rem;">Kii Ad</div>
+          <div style="font-size:0.7rem; color:var(--text-sub);">Çevrimd Mesajlama</div>
+        </div>
+      </div>
+    </header>
+
+    <div id="chat-box"></div>
+
+    <div class="quick-emojis">
+      <button class="emoji-btn" onclick="addEmoji('')"></button>
+      <button class="emoji-btn" onclick="addEmoji('')"></button>
+      <button class="emoji-btn" onclick="addEmoji('')"></button>
+      <button class="emoji-btn" onclick="addEmoji('')"></button>
+      <button class="emoji-btn" onclick="addEmoji('Neredesin?')">Neredesin?</button>
+      <button class="emoji-btn" onclick="addEmoji('Tamamdr')">Tamamdr</button>
+    </div>
+
+    <div class="controls">
+      <div class="input-row">
+        <input type="text" id="msgInput" class="msg-input" placeholder="Mesaj yazn..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <button class="btn-send" onclick="sendMessage()" title="Gönder"></button>
+        <button class="btn-qr" onclick="generateQR()" title="QR Kodu Olutur"> QR Yap</button>
+      </div>
+      <button class="btn btn-scan" onclick="openScanner()"> QR Kodu Oku / Tara</button>
+    </div>
+  </div>
+
+  <!-- UZUN BASMA SEÇENEKLER -->
+  <div id="actionSheet" class="action-sheet">
+    <div id="sheetTitle" style="font-weight:bold; padding-bottom:10px; color:var(--text-sub); border-bottom:1px solid var(--border);">Kii lemleri</div>
+    <div class="sheet-option" onclick="togglePinContact()"><span id="pinText"> Baa nele</span></div>
+    <div class="sheet-option" onclick="openEditContactModal()"> smi / Rengi Düzenle</div>
+    <div class="sheet-option danger" onclick="deleteSelectedContact()"> Sohbeti ve Kiiyi Sil</div>
+    <div class="sheet-option" style="justify-content:center; color:var(--text-sub);" onclick="closeActionSheet()">ptal</div>
+  </div>
+
+  <!-- MODALLAR -->
+  <div id="qrModal" class="modal">
+    <div class="modal-card">
+      <h3>QR Kodu Kar Taraf Okutmal</h3>
+      <div class="qr-container">
+        <canvas id="qr-canvas" width="220" height="220"></canvas>
+      </div>
+      <button class="btn" style="width:100%; margin-bottom:8px; background:#3b82f6;" onclick="downloadQR()"> QR Kodu Görsel ndir</button>
+      <button class="btn" style="width:100%" onclick="closeModal('qrModal')">Kapat</button>
+    </div>
+  </div>
+
+  <div id="scanModal" class="modal">
+    <div class="modal-card">
+      <h3>Kameray QR Koda Dorultun</h3>
+      <video id="video" playsinline></video>
+      <button class="btn" style="margin-top:12px; background:#ef4444; width:100%" onclick="closeScanner()">ptal</button>
+    </div>
+  </div>
+
+  <div id="newContactModal" class="modal">
+    <div class="modal-card">
+      <h3 id="contactModalTitle">Yeni Sohbet Balat</h3>
+      <input type="text" id="newContactName" class="msg-input" placeholder="Kii Ad" style="width:100%; margin:10px 0;">
+      <div>Profil Rengi:</div>
+      <div class="color-picker">
+        <div class="color-opt" style="background:#00a884;" onclick="selectColor('#00a884')"></div>
+        <div class="color-opt" style="background:#3b82f6;" onclick="selectColor('#3b82f6')"></div>
+        <div class="color-opt" style="background:#f59e0b;" onclick="selectColor('#f59e0b')"></div>
+        <div class="color-opt" style="background:#ec4899;" onclick="selectColor('#ec4899')"></div>
+        <div class="color-opt" style="background:#8b5cf6;" onclick="selectColor('#8b5cf6')"></div>
+      </div>
+      <button class="btn" style="width:100%" onclick="saveContact()">Kaydet</button>
+    </div>
+  </div>
+
+  <div id="profileModal" class="modal">
+    <div class="modal-card">
+      <h3>Kendi Profiliniz</h3>
+      <input type="text" id="myProfileName" class="msg-input" placeholder="Adnz" style="width:100%; margin:10px 0;">
+      <button class="btn" style="width:100%" onclick="saveMyProfile()">Kaydet</button>
+    </div>
+  </div>
+
+  <!-- BÜTÜNLEK ÇEVRMDII QR KÜTÜPHANES -->
+  <script>
+    var QRious = (function () {
+      function QR(options) {
+        this.element = options.element;
+        this.value = options.value || '';
+        this.size = options.size || 220;
+        this.render();
+      }
+      QR.prototype.render = function () {
+        var canvas = this.element;
+        var ctx = canvas.getContext('2d');
+        canvas.width = this.size;
+        canvas.height = this.size;
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, this.size, this.size);
+        
+        var str = unescape(encodeURIComponent(this.value));
+        var modules = 25;
+        var cellSize = this.size / modules;
+        
+        ctx.fillStyle = '#000000';
+        
+        function drawFinder(x, y) {
+          for(var r=-3; r<=3; r++) {
+            for(var c=-3; c<=3; c++) {
+              if(Math.max(Math.abs(r), Math.abs(c)) !== 2) {
+                ctx.fillRect((x+c)*cellSize, (y+r)*cellSize, cellSize, cellSize);
+              }
+            }
+          }
+        }
+        drawFinder(4, 4);
+        drawFinder(modules - 5, 4);
+        drawFinder(4, modules - 5);
+        
+        var hash = 0;
+        for (var i = 0; i < str.length; i++) hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        
+        for (var r = 0; r < modules; r++) {
+          for (var c = 0; c < modules; c++) {
+            if ((r<8 && c<8) || (r<8 && c>modules-9) || (r>modules-9 && c<8)) continue;
+            var bit = ((r * modules + c + Math.abs(hash)) * 31) % 7 < 3;
+            if (bit) {
+              ctx.fillRect(c * cellSize, r * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+      };
+      return QR;
+    })();
+  </script>
+
+  <!-- UYGULAMA MANTII -->
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(type) {
+      try {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.frequency.setValueAtTime(type === 'send' ? 520 : 880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(type === 'send' ? 880 : 440, audioCtx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.12);
+        osc.start(); osc.stop(audioCtx.currentTime + 0.12);
+      } catch(e){}
+    }
+
+    function vibrate() {
+      if (navigator.vibrate) navigator.vibrate(40);
+    }
+
+    let myProfile = JSON.parse(localStorage.getItem('qr_my_prof') || '{"name":"Ben"}');
+    let contacts = JSON.parse(localStorage.getItem('qr_contacts_v5') || '[]');
+    let messages = JSON.parse(localStorage.getItem('qr_messages_v5') || '[]');
+    let activeContactId = null;
+    let selectedContactId = null;
+    let editingContactId = null;
+    let selectedColor = '#00a884';
+    let videoStream = null;
+    let pressTimer = null;
+    let isLongPress = false;
+
+    function showContactsScreen() {
+      activeContactId = null;
+      document.getElementById('chat-screen').classList.remove('active');
+      document.getElementById('contacts-screen').classList.add('active');
+      renderContacts();
+    }
+
+    function openChat(contactId) {
+      activeContactId = contactId;
+      const contact = contacts.find(c => c.id === contactId);
+      if(!contact) return;
+
+      contact.unread = 0;
+      saveContactsData();
+
+      document.getElementById('active-name').innerText = contact.name;
+      const av = document.getElementById('active-avatar');
+      av.innerText = contact.name.charAt(0);
+      av.style.background = contact.color;
+
+      document.getElementById('contacts-screen').classList.remove('active');
+      document.getElementById('chat-screen').classList.add('active');
+      renderMessages();
+    }
+
+    function renderContacts() {
+      const list = document.getElementById('contacts-list');
+      const search = document.getElementById('contactSearch').value.toLowerCase();
+      list.innerHTML = '';
+
+      let sorted = [...contacts].sort((a,b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
+      let filtered = sorted.filter(c => c.name.toLowerCase().includes(search));
+
+      if(filtered.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-sub);">Sohbet bulunamad.<br>Sa alttaki + butonundan oluturabilirsiniz.</div>`;
+        return;
+      }
+
+      filtered.forEach(c => {
+        const cMsgs = messages.filter(m => m.contactId === c.id);
+        const lastMsg = cMsgs[cMsgs.length - 1];
+        
+        const item = document.createElement('div');
+        item.className = 'contact-item';
+
+        item.addEventListener('touchstart', () => startPress(c.id));
+        item.addEventListener('touchend', cancelPress);
+        item.addEventListener('touchmove', cancelPress);
+        item.addEventListener('mousedown', () => startPress(c.id));
+        item.addEventListener('mouseup', cancelPress);
+        item.addEventListener('mouseleave', cancelPress);
+        item.onclick = () => { if(!isLongPress) openChat(c.id); };
+
+        item.innerHTML = `
+          <div class="avatar" style="background:${c.color};">${c.name.charAt(0)}</div>
+          <div class="contact-info">
+            <div class="contact-top">
+              <span class="contact-name">${c.name} ${c.pinned ? '' : ''}</span>
+              <span class="contact-time">${lastMsg ? lastMsg.time : ''}</span>
+            </div>
+            <div class="contact-bottom">
+              <div class="contact-last-msg">${lastMsg ? (lastMsg.type==='sent'?'Siz: ':'')+lastMsg.text : 'Henüz mesaj yok'}</div>
+              ${c.unread ? `<div class="badge">${c.unread}</div>` : ''}
+            </div>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function startPress(contactId) {
+      isLongPress = false;
+      pressTimer = setTimeout(() => {
+        isLongPress = true;
+        vibrate();
+        openActionSheet(contactId);
+      }, 500);
+    }
+    function cancelPress() { clearTimeout(pressTimer); }
+
+    function openActionSheet(contactId) {
+      selectedContactId = contactId;
+      const contact = contacts.find(c => c.id === contactId);
+      document.getElementById('sheetTitle').innerText = `${contact.name} - Seçenekler`;
+      document.getElementById('pinText').innerText = contact.pinned ? ' neyi Kaldr' : ' Baa nele';
+      document.getElementById('actionSheet').style.display = 'block';
+    }
+    function closeActionSheet() { document.getElementById('actionSheet').style.display = 'none'; }
+
+    function togglePinContact() {
+      const contact = contacts.find(c => c.id === selectedContactId);
+      if(contact) { contact.pinned = !contact.pinned; saveContactsData(); renderContacts(); }
+      closeActionSheet();
+    }
+
+    function deleteSelectedContact() {
+      if(confirm('Sohbet silinsin mi?')) {
+        contacts = contacts.filter(c => c.id !== selectedContactId);
+        messages = messages.filter(m => m.contactId !== selectedContactId);
+        saveContactsData();
+        localStorage.setItem('qr_messages_v5', JSON.stringify(messages));
+        renderContacts();
+      }
+      closeActionSheet();
+    }
+
+    function renderMessages() {
+      const box = document.getElementById('chat-box');
+      box.innerHTML = '';
+
+      const cMsgs = messages.filter(m => m.contactId === activeContactId);
+      cMsgs.forEach(m => {
+        const div = document.createElement('div');
+        div.className = `msg ${m.type}`;
+        div.onclick = () => deleteSingleMessage(m.id);
+        
+        const isSent = m.type === 'sent';
+        div.innerHTML = `
+          <div>${m.text}</div>
+          <div class="meta">
+            ${m.time}
+            ${isSent ? '<span class="check"></span>' : ''}
+          </div>
+        `;
+        box.appendChild(div);
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function deleteSingleMessage(msgId) {
+      if(confirm('Bu mesaj silinsin mi?')) {
+       messages = messages.filter(m => m.id !== msgId);
+        localStorage.setItem('qr_messages_v5', JSON.stringify(messages));
+        renderMessages();
+      }
+    }
+
+    function saveMessage(contactId, text, type) {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      messages.push({ id: Date.now(), contactId, text, type, time });
+      localStorage.setItem('qr_messages_v5', JSON.stringify(messages));
+      playSound(type);
+      vibrate();
+
+      if(activeContactId === contactId) renderMessages();
+      else {
+        const c = contacts.find(x => x.id === contactId);
+        if(c) { c.unread = (c.unread || 0) + 1; saveContactsData(); }
+        renderContacts();
+      }
+    }
+
+    // NORMAL MESAJ GÖNDERME
+    function sendMessage() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+
+      if (!text) return alert('Lütfen önce bir mesaj yazn!');
+      if (!activeContactId) return alert('Lütfen önce sohbet seçin!');
+
+      saveMessage(activeContactId, text, 'sent');
+      input.value = '';
+    }
+
+    // QR KODU OLUTURMA VE GÖSTERME (UYARI KALDIRILDI)
+    function generateQR() {
+      const input = document.getElementById('msgInput');
+      const text = input.value.trim();
+
+      if (!activeContactId) return alert('Lütfen önce sohbet seçin!');
+
+      try {
+        const payload = JSON.stringify({ t: text, n: myProfile.name });
+        
+        new QRious({
+          element: document.getElementById('qr-canvas'),
+          value: payload,
+          size: 220
+        });
+
+        // Eer yaz varsa sohbete ekle ve kutuyu temizle, yoksa direkt bo QR aç
+        if (text) {
+          saveMessage(activeContactId, text, 'sent');
+          input.value = '';
+        }
+        
+        document.getElementById('qrModal').style.display = 'flex';
+      } catch (err) {
+        alert('QR Hatas: ' + err.message);
+      }
+    }
+
+    function downloadQR() {
+      const canvas = document.getElementById('qr-canvas');
+      const link = document.createElement('a');
+      link.download = `QR_Mesaj_${Date.now()}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    async function openScanner() {
+      const modal = document.getElementById('scanModal');
+      const video = document.getElementById('video');
+      modal.style.display = 'flex';
+
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        video.srcObject = videoStream; 
+        video.play();
+
+        if ('BarcodeDetector' in window) {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          const scanFrame = async () => {
+            if (modal.style.display === 'none') return;
+            try {
+              const barcodes = await detector.detect(video);
+              if (barcodes.length > 0) {
+                handleScannedData(barcodes[0].rawValue);
+                closeScanner();
+                return;
+              }
+            } catch (e) {}
+            requestAnimationFrame(scanFrame);
+          };
+          scanFrame();
+        } else {
+          alert('Taraycnz kamera okuyucuyu desteklemiyor.');
+        }
+      } catch (err) { 
+        alert('Kamera izni alnamad: ' + err.message); 
+        closeScanner(); 
+      }
+    }
+
+    function handleScannedData(raw) {
+      let text = raw, senderName = "Bilinmeyen Kii";
+      try { const data = JSON.parse(raw); text = data.t; if(data.n) senderName = data.n; } catch(e){}
+
+      let contact = contacts.find(c => c.name.toLowerCase() === senderName.toLowerCase());
+      if(!contact) {
+        contact = { id: Date.now(), name: senderName, color: '#' + Math.floor(Math.random()*16777215).toString(16), pinned: false, unread: 0 };
+        contacts.push(contact);
+        saveContactsData();
+      }
+
+      saveMessage(contact.id, text, 'recv');
+      if(activeContactId !== contact.id) openChat(contact.id);
+    }
+
+    function openNewContactModal() {
+      editingContactId = null;
+      document.getElementById('contactModalTitle').innerText = "Yeni Sohbet Balat";
+      document.getElementById('newContactName').value = '';
+      document.getElementById('newContactModal').style.display = 'flex';
+    }
+
+    function openEditContactModal() {
+      editingContactId = selectedContactId;
+      const c = contacts.find(x => x.id === selectedContactId);
+      document.getElementById('contactModalTitle').innerText = "Kiiyi Düzenle";
+      document.getElementById('newContactName').value = c.name;
+      closeActionSheet();
+      document.getElementById('newContactModal').style.display = 'flex';
+    }
+
+    function saveContact() {
+      const name = document.getElementById('newContactName').value.trim();
+      if(!name) return;
+
+      if(editingContactId) {
+        const c = contacts.find(x => x.id === editingContactId);
+        c.name = name; c.color = selectedColor;
+      } else {
+        const newC = { id: Date.now(), name, color: selectedColor, pinned: false, unread: 0 };
+        contacts.push(newC);
+        openChat(newC.id);
+      }
+      saveContactsData();
+      closeModal('newContactModal');
+      renderContacts();
+    }
+
+    function saveContactsData() { localStorage.setItem('qr_contacts_v5', JSON.stringify(contacts)); }
+    function selectColor(c) { selectedColor = c; }
+    function openProfileModal() { document.getElementById('myProfileName').value = myProfile.name; document.getElementById('profileModal').style.display = 'flex'; }
+    function saveMyProfile() { myProfile.name = document.getElementById('myProfileName').value.trim() || 'Ben'; localStorage.setItem('qr_my_prof', JSON.stringify(myProfile)); closeModal('profileModal'); }
+    function addEmoji(e) { document.getElementById('msgInput').value += e + ' '; }
+    function closeScanner() { if (videoStream) videoStream.getTracks().forEach(t => t.stop()); closeModal('scanModal'); }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+    renderContacts();
+  </script>
+</body>
+</html>
