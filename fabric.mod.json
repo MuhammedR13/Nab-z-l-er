@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "craftphone",
+  "version": "1.0.0",
+  "name": "CraftPhone Mod",
+  "description": "Fabric 1.20.1 için akıllı telefon ve dijital bankacılık modu.",
+  "authors": ["MuhammedR13"],
+  "license": "MIT",
+  "entrypoints": { "main": ["net.craftphone.PhoneMod"] },
+  "depends": { "fabricloader": ">=0.14.22", "minecraft": "~1.20.1", "java": ">=17" }
+}
